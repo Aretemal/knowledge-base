@@ -1,0 +1,19 @@
+<ul class="tree-list" role="tree">
+  @for (node of tree; track node.id) {
+    <app-tree-node
+      [node]="node"
+      [depth]="0"
+      [filesByFolderId]="filesByFolderId"
+      [filesInFolder]="getFilesFor(node.id)"
+      [selectedId]="selectedId"
+      [expandedIds]="expandedIds"
+      (selectFolder)="selectFolder.emit($event)"
+      (renameFolder)="renameFolder.emit($event)"
+      (deleteFolder)="deleteFolder.emit($event)"
+      (renameFile)="renameFile.emit($event)"
+      (deleteFile)="deleteFile.emit($event)"
+      (openRoadmap)="openRoadmap.emit($event)"
+      (toggleExpand)="toggleExpand($event)"
+    />
+  }
+</ul>

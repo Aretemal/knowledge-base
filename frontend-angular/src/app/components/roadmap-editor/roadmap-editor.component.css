@@ -1,0 +1,402 @@
+.roadmap-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: #252526;
+}
+
+.roadmap-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #3c3c3c;
+  flex-shrink: 0;
+}
+
+.roadmap-editor-header h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #cccccc;
+}
+
+.roadmap-editor-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid #3c3c3c;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: #0e639c;
+  color: #fff;
+  border-color: #0e639c;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #1177bb;
+}
+
+.btn-secondary {
+  background: #3c3c3c;
+  color: #cccccc;
+}
+
+.btn-secondary:hover {
+  background: #505050;
+}
+
+.btn-small {
+  padding: 4px 10px;
+  font-size: 11px;
+  background: #3c3c3c;
+  color: #cccccc;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.roadmap-error {
+  margin: 0;
+  padding: 8px 16px;
+  background: rgba(244, 135, 113, 0.15);
+  color: #f48771;
+  font-size: 12px;
+}
+
+.roadmap-editor-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+.roadmap-graph-section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.roadmap-graph-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.roadmap-title-inline {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  background: #3c3c3c;
+  color: #cccccc;
+  font-size: 13px;
+}
+
+.roadmap-graph-wrap {
+  flex: 1;
+  min-height: 0;
+  background: #1e1e1e;
+  border-radius: 8px;
+  border: 1px solid #3c3c3c;
+  overflow: auto;
+}
+
+.roadmap-graph-empty {
+  padding: 24px;
+  text-align: center;
+  color: #858585;
+}
+
+.roadmap-graph-empty p {
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+.graph-title {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #cccccc;
+  text-align: center;
+}
+
+.graph-road {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0 8px;
+}
+
+.graph-road-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.graph-node-clickable {
+  cursor: pointer;
+  font: inherit;
+  outline: none;
+}
+
+.graph-node-clickable:hover {
+  filter: brightness(1.1);
+}
+
+.graph-node-main {
+  padding: 10px 16px;
+  min-width: 140px;
+  border-radius: 8px;
+  border: 2px solid #0e639c;
+  background: rgba(14, 99, 156, 0.2);
+  text-align: center;
+}
+
+.graph-node-main-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #e5e7eb;
+}
+
+.graph-branches {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-left: 12px;
+  border-left: 2px dashed #505050;
+}
+
+.graph-node-branch {
+  padding: 6px 12px;
+  min-width: 120px;
+  border-radius: 6px;
+  border: 1px solid #505050;
+  background: #2d2d30;
+  text-align: center;
+}
+
+.graph-node-branch-label {
+  font-size: 12px;
+  color: #b0b0b0;
+}
+
+.graph-branch-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.graph-sub-branches {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding-left: 12px;
+  border-left: 2px dashed #404050;
+}
+
+.graph-node-sub {
+  padding: 4px 10px;
+  min-width: 100px;
+  border-radius: 4px;
+  border: 1px solid #404050;
+  background: #252530;
+  text-align: center;
+  font-size: 11px;
+  color: #a0a0b0;
+  cursor: pointer;
+  outline: none;
+}
+
+.graph-node-sub:hover {
+  filter: brightness(1.1);
+}
+
+.graph-btn-sub {
+  font-size: 10px;
+}
+
+.graph-connector {
+  align-self: center;
+  padding: 0 4px;
+  font-size: 18px;
+  color: #0e639c;
+  flex-shrink: 0;
+}
+
+.graph-btn-branch {
+  padding: 4px 10px;
+  border: 1px dashed #505050;
+  border-radius: 4px;
+  background: transparent;
+  color: #858585;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.graph-btn-branch:hover {
+  border-color: #0e639c;
+  color: #3794ff;
+  background: rgba(14, 99, 156, 0.1);
+}
+
+.graph-btn-add-main {
+  align-self: center;
+  padding: 8px 14px;
+  border: 1px dashed #0e639c;
+  border-radius: 6px;
+  background: rgba(14, 99, 156, 0.1);
+  color: #3794ff;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.graph-btn-add-main:hover {
+  background: rgba(14, 99, 156, 0.2);
+}
+
+/* Модалка содержимого узла */
+.node-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.node-modal {
+  background: #252526;
+  border: 1px solid #3c3c3c;
+  border-radius: 8px;
+  min-width: 360px;
+  max-width: 560px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.node-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #3c3c3c;
+  flex-shrink: 0;
+}
+
+.node-modal-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #cccccc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node-modal-close {
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: #858585;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  border-radius: 4px;
+}
+
+.node-modal-close:hover {
+  color: #cccccc;
+  background: #3c3c3c;
+}
+
+.node-modal-body {
+  padding: 16px;
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.node-modal-label {
+  display: block;
+  font-size: 12px;
+  color: #858585;
+  margin-bottom: 8px;
+}
+
+.node-modal-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #3c3c3c;
+  border-radius: 6px;
+  background: #1e1e1e;
+  color: #cccccc;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 120px;
+}
+
+.node-modal-textarea:focus {
+  outline: none;
+  border-color: #0e639c;
+}
+
+.node-modal-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 12px 16px;
+  border-top: 1px solid #3c3c3c;
+  flex-shrink: 0;
+}
+
+.node-modal-footer .btn {
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid #3c3c3c;
+}
+
+.node-modal-footer .btn-primary {
+  background: #0e639c;
+  color: #fff;
+}
+
+.node-modal-footer .btn-primary:hover {
+  background: #1177bb;
+}
+
+.node-modal-footer .btn-secondary {
+  background: #3c3c3c;
+  color: #cccccc;
+}
+
+.node-modal-footer .btn-secondary:hover {
+  background: #505050;
+}

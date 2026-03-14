@@ -1,0 +1,146 @@
+.tree-node {
+  list-style: none;
+  margin: 0;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 28px;
+  border-radius: 4px;
+}
+
+.tree-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.tree-row.selected {
+  background: rgba(59, 130, 246, 0.25);
+}
+
+.tree-chevron {
+  flex-shrink: 0;
+  width: 20px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tree-chevron .chevron {
+  font-size: 10px;
+  transition: transform 0.15s ease;
+}
+
+.tree-chevron.expanded .chevron {
+  transform: rotate(90deg);
+}
+
+.chevron-placeholder {
+  display: inline-block;
+  width: 10px;
+}
+
+.tree-label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: #e5e7eb;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-row-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0.6;
+}
+
+.tree-row:hover .tree-row-actions {
+  opacity: 1;
+}
+
+.tree-action-btn {
+  padding: 2px 4px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 11px;
+  border-radius: 2px;
+}
+
+.tree-action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+}
+
+.tree-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tree-file-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+  border-radius: 4px;
+  list-style: none;
+  margin: 0;
+}
+
+.tree-file-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.tree-file-link {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  color: #3794ff;
+  text-decoration: none;
+  font-size: 12px;
+  overflow: hidden;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.tree-file-link:hover {
+  text-decoration: underline;
+}
+
+.tree-file-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0.6;
+}
+
+.tree-file-row:hover .tree-file-actions {
+  opacity: 1;
+}

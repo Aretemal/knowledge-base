@@ -15,6 +15,11 @@ export class StorageService implements OnModuleInit {
     await this.ensureMetadata();
   }
 
+  async getAllFolders(): Promise<FolderEntity[]> {
+    const data = await this.readMetadata();
+    return data.folders;
+  }
+
   async getFoldersByParent(parentId: string | null): Promise<FolderEntity[]> {
     const data = await this.readMetadata();
     return data.folders.filter((f) => f.parentId === parentId);
@@ -86,6 +91,11 @@ export class StorageService implements OnModuleInit {
     return data.files.filter((f) => f.folderId === folderId);
   }
 
+  async getAllFiles(): Promise<FileEntity[]> {
+    const data = await this.readMetadata();
+    return data.files;
+  }
+
   async getFileById(id: string): Promise<FileEntity | undefined> {
     const data = await this.readMetadata();
     return data.files.find((f) => f.id === id);
@@ -144,21 +154,63 @@ export class StorageService implements OnModuleInit {
   private async ensureMetadata() {
     try {
       await fs.promises.access(this.metadataPath, fs.constants.F_OK);
+      await this.migrateRemoveRoot();
+      await this.migrateFixFileNamesEncoding();
     } catch {
-      const now = new Date().toISOString();
-      const root: FolderEntity = {
-        id: 'root',
-        name: 'Root',
-        parentId: null,
-        createdAt: now,
-        updatedAt: now,
-      };
       const initial: MetadataStore = {
-        folders: [root],
+        folders: [],
         files: [],
       };
       await this.writeMetadata(initial);
     }
+  }
+
+  /** Исправляет имена файлов, сохранённые как latin1 вместо UTF-8 (кириллица) */
+  private async migrateFixFileNamesEncoding(): Promise<void> {
+    const data = await this.readMetadata();
+    const decode = (s: string): string => {
+      try {
+        return Buffer.from(s, 'latin1').toString('utf8');
+      } catch {
+        return s;
+      }
+    };
+    let changed = false;
+    for (const file of data.files) {
+      if (file.name.includes('Ð')) {
+        file.name = decode(file.name);
+        file.originalName = decode(file.originalName);
+        changed = true;
+      }
+    }
+    if (changed) await this.writeMetadata(data);
+  }
+
+  /** Удаляет папку root из метаданных и переносит её содержимое на верхний уровень */
+  private async migrateRemoveRoot(): Promise<void> {
+    const data = await this.readMetadata();
+    const hasRoot = data.folders.some((f) => f.id === 'root');
+    if (!hasRoot) return;
+
+    for (const f of data.folders) {
+      if (f.parentId === 'root') f.parentId = null;
+    }
+    data.folders = data.folders.filter((f) => f.id !== 'root');
+
+    const rootFiles = data.files.filter((f) => f.folderId === 'root');
+    if (rootFiles.length > 0) {
+      const now = new Date().toISOString();
+      const uploadsFolder: FolderEntity = {
+        id: randomUUID(),
+        name: 'Загрузки',
+        parentId: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      data.folders.push(uploadsFolder);
+      for (const file of rootFiles) file.folderId = uploadsFolder.id;
+    }
+    await this.writeMetadata(data);
   }
 
   private async readMetadata(): Promise<MetadataStore> {

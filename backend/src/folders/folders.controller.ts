@@ -20,9 +20,37 @@ interface RenameFolderDto {
   name: string;
 }
 
+export interface TreeFolderDto {
+  id: string;
+  name: string;
+  children: TreeFolderDto[];
+}
+
 @Controller('folders')
 export class FoldersController {
   constructor(private readonly storage: StorageService) {}
+
+  @Get('tree')
+  async getTree(): Promise<TreeFolderDto[]> {
+    const all = await this.storage.getAllFolders();
+    const byParent = new Map<string | null, FolderEntity[]>();
+    for (const f of all) {
+      const key = f.parentId;
+      if (!byParent.has(key)) byParent.set(key, []);
+      byParent.get(key)!.push(f);
+    }
+    function build(parentId: string | null): TreeFolderDto[] {
+      const list = byParent.get(parentId) ?? [];
+      return list
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((f) => ({
+          id: f.id,
+          name: f.name,
+          children: build(f.id),
+        }));
+    }
+    return build(null);
+  }
 
   @Get()
   getByParent(

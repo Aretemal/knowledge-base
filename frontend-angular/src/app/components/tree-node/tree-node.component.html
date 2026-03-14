@@ -1,0 +1,59 @@
+<li class="tree-node" [style.padding-left.px]="depth * 16 + 4" (click)="$event.stopPropagation()">
+  <div class="tree-row" [class.selected]="isSelected">
+    <button type="button" class="tree-chevron" [class.expanded]="isExpanded" (click)="onToggle($event)" [attr.aria-label]="isExpanded ? 'Свернуть' : 'Развернуть'">
+      @if (hasChildren) {
+        <span class="chevron">▶</span>
+      } @else {
+        <span class="chevron-placeholder"></span>
+      }
+    </button>
+    <button type="button" class="tree-label" (click)="onSelect()">
+      <span class="tree-icon">{{ isExpanded ? '📂' : '📁' }}</span>
+      <span class="tree-name">{{ node.name }}</span>
+    </button>
+    <div class="tree-row-actions" (click)="$event.stopPropagation()">
+      <button type="button" class="tree-action-btn" (click)="renameFolder.emit(node)" title="Переименовать">✎</button>
+      <button type="button" class="tree-action-btn" (click)="deleteFolder.emit(node)" title="Удалить">✕</button>
+    </div>
+  </div>
+  @if (hasChildren && isExpanded) {
+    <ul class="tree-children">
+      @for (child of node.children; track child.id) {
+        <app-tree-node
+          [node]="child"
+          [depth]="depth + 1"
+          [filesByFolderId]="filesByFolderId"
+          [filesInFolder]="getFilesFor(child.id)"
+          [selectedId]="selectedId"
+          [expandedIds]="expandedIds"
+          (selectFolder)="selectFolder.emit($event)"
+          (renameFolder)="renameFolder.emit($event)"
+          (deleteFolder)="deleteFolder.emit($event)"
+          (renameFile)="renameFile.emit($event)"
+          (deleteFile)="deleteFile.emit($event)"
+          (openRoadmap)="openRoadmap.emit($event)"
+          (toggleExpand)="toggleExpand.emit($event)"
+        />
+      }
+      @for (file of filesInFolder; track file.id) {
+        <li class="tree-file-row" [style.padding-left.px]="(depth + 1) * 16 + 4">
+          @if (openRoadmap.observed && isRoadmap(file)) {
+            <button type="button" class="tree-file-link" (click)="openRoadmap.emit(file)" [title]="file.name">
+              <span class="tree-file-icon">🗺</span>
+              <span class="tree-file-name">{{ file.name }}</span>
+            </button>
+          } @else {
+            <a [href]="getDownloadUrl(file.id)" target="_blank" rel="noreferrer" class="tree-file-link" [title]="file.name">
+              <span class="tree-file-icon">📄</span>
+              <span class="tree-file-name">{{ file.name }}</span>
+            </a>
+          }
+          <div class="tree-file-actions">
+            <button type="button" class="tree-action-btn" (click)="renameFile.emit(file)" title="Переименовать">✎</button>
+            <button type="button" class="tree-action-btn" (click)="deleteFile.emit(file)" title="Удалить">✕</button>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</li>
