@@ -1,14 +1,25 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit, Optional } from '@nestjs/common';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { FileEntity, FolderEntity, MetadataStore } from './metadata.types';
+import type { TreeFolderDto } from './tree.types';
+
+export const STORAGE_BASE_PATH = 'STORAGE_BASE_PATH';
 
 @Injectable()
 export class StorageService implements OnModuleInit {
-  private readonly baseDir = path.join(process.cwd(), 'storage');
-  private readonly filesDir = path.join(this.baseDir, 'files');
-  private readonly metadataPath = path.join(this.baseDir, 'metadata.json');
+  private readonly baseDir: string;
+  private readonly filesDir: string;
+  private readonly metadataPath: string;
+
+  constructor(
+    @Optional() @Inject(STORAGE_BASE_PATH) basePath?: string,
+  ) {
+    this.baseDir = basePath ?? path.join(process.cwd(), 'storage');
+    this.filesDir = path.join(this.baseDir, 'files');
+    this.metadataPath = path.join(this.baseDir, 'metadata.json');
+  }
 
   async onModuleInit() {
     await this.ensureDirs();
@@ -23,6 +34,27 @@ export class StorageService implements OnModuleInit {
   async getFoldersByParent(parentId: string | null): Promise<FolderEntity[]> {
     const data = await this.readMetadata();
     return data.folders.filter((f) => f.parentId === parentId);
+  }
+
+  async getFolderTree(): Promise<TreeFolderDto[]> {
+    const all = await this.getAllFolders();
+    const byParent = new Map<string | null, FolderEntity[]>();
+    for (const f of all) {
+      const key = f.parentId;
+      if (!byParent.has(key)) byParent.set(key, []);
+      byParent.get(key)!.push(f);
+    }
+    const build = (parentId: string | null): TreeFolderDto[] => {
+      const list = byParent.get(parentId) ?? [];
+      return list
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((f) => ({
+          id: f.id,
+          name: f.name,
+          children: build(f.id),
+        }));
+    };
+    return build(null);
   }
 
   async getFolderById(id: string): Promise<FolderEntity | undefined> {

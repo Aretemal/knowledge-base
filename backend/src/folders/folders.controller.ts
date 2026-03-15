@@ -4,52 +4,24 @@ import {
   Delete,
   Get,
   Param,
+  NotFoundException,
   Patch,
   Post,
   Query,
 } from '@nestjs/common';
 import { StorageService } from '../storage/storage.service';
 import type { FolderEntity } from '../storage/metadata.types';
-
-interface CreateFolderDto {
-  name: string;
-  parentId?: string | null;
-}
-
-interface RenameFolderDto {
-  name: string;
-}
-
-export interface TreeFolderDto {
-  id: string;
-  name: string;
-  children: TreeFolderDto[];
-}
+import type { TreeFolderDto } from '../storage/tree.types';
+import { CreateFolderDto } from './dto/create-folder.dto';
+import { RenameFolderDto } from './dto/rename-folder.dto';
 
 @Controller('folders')
 export class FoldersController {
   constructor(private readonly storage: StorageService) {}
 
   @Get('tree')
-  async getTree(): Promise<TreeFolderDto[]> {
-    const all = await this.storage.getAllFolders();
-    const byParent = new Map<string | null, FolderEntity[]>();
-    for (const f of all) {
-      const key = f.parentId;
-      if (!byParent.has(key)) byParent.set(key, []);
-      byParent.get(key)!.push(f);
-    }
-    function build(parentId: string | null): TreeFolderDto[] {
-      const list = byParent.get(parentId) ?? [];
-      return list
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map((f) => ({
-          id: f.id,
-          name: f.name,
-          children: build(f.id),
-        }));
-    }
-    return build(null);
+  getTree(): Promise<TreeFolderDto[]> {
+    return this.storage.getFolderTree();
   }
 
   @Get()
@@ -77,7 +49,7 @@ export class FoldersController {
   ): Promise<FolderEntity> {
     const updated = await this.storage.renameFolder(id, body.name);
     if (!updated) {
-      throw new Error('Folder not found');
+      throw new NotFoundException('Folder not found');
     }
     return updated;
   }
@@ -87,4 +59,3 @@ export class FoldersController {
     await this.storage.deleteFolderRecursive(id);
   }
 }
-

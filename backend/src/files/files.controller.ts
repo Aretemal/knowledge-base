@@ -1,17 +1,19 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
   Put,
   Query,
+  Req,
+  Res,
   UploadedFile,
   UseInterceptors,
-  Res,
-  Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response, Request } from 'express';
@@ -21,10 +23,7 @@ import { diskStorage } from 'multer';
 import { StorageService } from '../storage/storage.service';
 import type { FileEntity } from '../storage/metadata.types';
 import { randomUUID } from 'node:crypto';
-
-interface RenameFileDto {
-  name: string;
-}
+import { RenameFileDto } from './dto/rename-file.dto';
 
 interface UploadedFileShape {
   originalname: string;
@@ -74,7 +73,9 @@ export class FilesController {
     @UploadedFile() file: UploadedFileShape | undefined,
     @Body('folderId') folderId: string,
   ): Promise<FileEntity> {
-    if (!file?.path) throw new Error('File required');
+    if (!file?.path) {
+      throw new BadRequestException('File required');
+    }
     const name = decodeFileName(file.originalname);
     return this.storage.createFile({
       folderId,
@@ -93,7 +94,7 @@ export class FilesController {
   ): Promise<FileEntity> {
     const updated = await this.storage.renameFile(id, body.name);
     if (!updated) {
-      throw new Error('File not found');
+      throw new NotFoundException('File not found');
     }
     return updated;
   }
@@ -110,8 +111,7 @@ export class FilesController {
   ): Promise<void> {
     const file = await this.storage.getFileById(id);
     if (!file) {
-      res.status(404).send('Not found');
-      return;
+      throw new NotFoundException('File not found');
     }
     res.download(this.storage.getPhysicalPath(file), file.name);
   }
@@ -123,8 +123,7 @@ export class FilesController {
   ): Promise<void> {
     const file = await this.storage.getFileById(id);
     if (!file) {
-      res.status(404).send('Not found');
-      return;
+      throw new NotFoundException('File not found');
     }
     const filePath = this.storage.getPhysicalPath(file);
     let raw: string;
@@ -147,12 +146,12 @@ export class FilesController {
   ): Promise<{ ok: boolean }> {
     const file = await this.storage.getFileById(id);
     if (!file) {
-      throw new Error('File not found');
+      throw new NotFoundException('File not found');
     }
     const filePath = this.storage.getPhysicalPath(file);
-    const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+    const body =
+      typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
     await fs.promises.writeFile(filePath, body, 'utf8');
     return { ok: true };
   }
 }
-
