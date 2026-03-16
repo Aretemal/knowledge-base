@@ -1,9 +1,18 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatDialog } from '@angular/material/dialog';
 import type { Folder, FileItem, TreeFolder, RoadmapData } from './models';
 import { ApiService } from './services/api.service';
 import { FolderTreeComponent } from './components/folder-tree/folder-tree.component';
 import { RoadmapEditorComponent } from './components/roadmap-editor/roadmap-editor.component';
+import {
+  PromptDialogComponent,
+  type PromptDialogData,
+} from './dialogs/prompt-dialog.component';
+import {
+  ConfirmDialogComponent,
+  type ConfirmDialogData,
+} from './dialogs/confirm-dialog.component';
 
 @Component({
   selector: 'app-root',
@@ -14,6 +23,7 @@ import { RoadmapEditorComponent } from './components/roadmap-editor/roadmap-edit
 })
 export class AppComponent implements OnInit {
   private api = inject(ApiService);
+  private dialog = inject(MatDialog);
 
   loading = false;
   error: string | null = null;
@@ -32,6 +42,23 @@ export class AppComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadTree().then(() => this.selectFolder(null));
+  }
+
+  private async prompt(options: PromptDialogData): Promise<string | null> {
+    const ref = this.dialog.open(PromptDialogComponent, {
+      data: options,
+      width: '360px',
+    });
+    return ref.afterClosed().toPromise();
+  }
+
+  private async confirm(options: ConfirmDialogData): Promise<boolean> {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: options,
+      width: '360px',
+    });
+    const result = await ref.afterClosed().toPromise();
+    return result === true;
   }
 
   isRoadmapFile(file: FileItem): boolean {
@@ -112,7 +139,11 @@ export class AppComponent implements OnInit {
   }
 
   async createFolder(): Promise<void> {
-    const name = window.prompt('Имя новой папки:');
+    const name = await this.prompt({
+      title: 'Новая папка',
+      message: 'Введите имя новой папки',
+      placeholder: 'Имя папки',
+    });
     if (!name) return;
     this.loading = true;
     this.error = null;
@@ -128,7 +159,12 @@ export class AppComponent implements OnInit {
   }
 
   async renameFolder(folder: { id: string; name: string }): Promise<void> {
-    const name = window.prompt('Новое имя папки:', folder.name);
+    const name = await this.prompt({
+      title: 'Переименовать папку',
+      message: `Новое имя для папки "${folder.name}":`,
+      initialValue: folder.name,
+      placeholder: 'Имя папки',
+    });
     if (!name || name === folder.name) return;
     this.loading = true;
     this.error = null;
@@ -144,7 +180,12 @@ export class AppComponent implements OnInit {
   }
 
   async deleteFolder(folder: { id: string; name: string }): Promise<void> {
-    if (!window.confirm(`Удалить папку "${folder.name}" и всё её содержимое?`)) return;
+    const ok = await this.confirm({
+      title: 'Удалить папку',
+      message: `Удалить папку "${folder.name}" и всё её содержимое?`,
+      confirmText: 'Удалить',
+    });
+    if (!ok) return;
     this.loading = true;
     this.error = null;
     try {
@@ -179,7 +220,12 @@ export class AppComponent implements OnInit {
   }
 
   async renameFile(file: FileItem): Promise<void> {
-    const name = window.prompt('Новое имя файла:', file.name);
+    const name = await this.prompt({
+      title: 'Переименовать файл',
+      message: `Новое имя для файла "${file.name}":`,
+      initialValue: file.name,
+      placeholder: 'Имя файла',
+    });
     if (!name || name === file.name) return;
     this.loading = true;
     this.error = null;
@@ -195,7 +241,12 @@ export class AppComponent implements OnInit {
   }
 
   async deleteFile(file: FileItem): Promise<void> {
-    if (!window.confirm(`Удалить файл "${file.name}"?`)) return;
+    const ok = await this.confirm({
+      title: 'Удалить файл',
+      message: `Удалить файл "${file.name}"?`,
+      confirmText: 'Удалить',
+    });
+    if (!ok) return;
     this.loading = true;
     this.error = null;
     try {
@@ -211,7 +262,13 @@ export class AppComponent implements OnInit {
 
   async createRoadmap(): Promise<void> {
     if (this.currentFolderId === null) return;
-    const name = window.prompt('Имя файла роадмапа:', 'Роадмап.roadmap')?.trim();
+    const name = (await this.prompt({
+      title: 'Новый роадмап',
+      message: 'Введите имя файла роадмапа',
+      placeholder: 'Имя файла',
+      initialValue: 'Роадмап.roadmap',
+      confirmText: 'Создать',
+    }))?.trim();
     if (!name) return;
     const finalName = name.endsWith('.roadmap') ? name : name + '.roadmap';
     const initial: RoadmapData = { title: 'Роадмап', nodes: [] };

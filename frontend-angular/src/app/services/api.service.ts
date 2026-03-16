@@ -1,97 +1,90 @@
 import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import type { Folder, TreeFolder, FileItem, RoadmapData } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-  private base = '/api';
+  private readonly base = '/api';
 
-  async getFolderTree(): Promise<TreeFolder[]> {
-    const res = await fetch(`${this.base}/folders/tree`);
-    if (!res.ok) throw new Error('Ошибка загрузки дерева');
-    return res.json();
+  constructor(private http: HttpClient) {}
+
+  getFolderTree(): Promise<TreeFolder[]> {
+    return firstValueFrom(
+      this.http.get<TreeFolder[]>(`${this.base}/folders/tree`),
+    );
   }
 
-  async getFoldersByParent(parentId: string | null): Promise<Folder[]> {
+  getFoldersByParent(parentId: string | null): Promise<Folder[]> {
     const q = parentId === null ? 'null' : parentId;
-    const res = await fetch(`${this.base}/folders?parentId=${q}`);
-    if (!res.ok) throw new Error('Ошибка загрузки папок');
-    return res.json();
+    return firstValueFrom(
+      this.http.get<Folder[]>(`${this.base}/folders`, {
+        params: { parentId: q },
+      }),
+    );
   }
 
-  async createFolder(name: string, parentId: string | null): Promise<Folder> {
-    const res = await fetch(`${this.base}/folders`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, parentId }),
-    });
-    if (!res.ok) throw new Error('Не удалось создать папку');
-    return res.json();
+  createFolder(name: string, parentId: string | null): Promise<Folder> {
+    return firstValueFrom(
+      this.http.post<Folder>(`${this.base}/folders`, { name, parentId }),
+    );
   }
 
-  async renameFolder(id: string, name: string): Promise<Folder> {
-    const res = await fetch(`${this.base}/folders/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    });
-    if (!res.ok) throw new Error('Не удалось переименовать папку');
-    return res.json();
+  renameFolder(id: string, name: string): Promise<Folder> {
+    return firstValueFrom(
+      this.http.patch<Folder>(`${this.base}/folders/${id}`, { name }),
+    );
   }
 
-  async deleteFolder(id: string): Promise<void> {
-    const res = await fetch(`${this.base}/folders/${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Не удалось удалить папку');
+  deleteFolder(id: string): Promise<void> {
+    return firstValueFrom(
+      this.http.delete<void>(`${this.base}/folders/${id}`),
+    );
   }
 
-  async getFiles(folderId?: string): Promise<FileItem[]> {
-    const url = folderId != null && folderId !== ''
-      ? `${this.base}/files?folderId=${encodeURIComponent(folderId)}`
+  getFiles(folderId?: string): Promise<FileItem[]> {
+    const hasFolder = folderId != null && folderId !== '';
+    const url = hasFolder
+      ? `${this.base}/files`
       : `${this.base}/files`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Ошибка загрузки файлов');
-    return res.json();
+    const options = hasFolder ? { params: { folderId: folderId! } } : {};
+    return firstValueFrom(this.http.get<FileItem[]>(url, options));
   }
 
-  async uploadFile(folderId: string, file: File): Promise<FileItem> {
+  uploadFile(folderId: string, file: File): Promise<FileItem> {
     const form = new FormData();
     form.append('folderId', folderId);
     form.append('file', file);
-    const res = await fetch(`${this.base}/files`, { method: 'POST', body: form });
-    if (!res.ok) throw new Error(`Не удалось загрузить ${file.name}`);
-    return res.json();
+    return firstValueFrom(
+      this.http.post<FileItem>(`${this.base}/files`, form),
+    );
   }
 
-  async renameFile(id: string, name: string): Promise<FileItem> {
-    const res = await fetch(`${this.base}/files/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    });
-    if (!res.ok) throw new Error('Не удалось переименовать файл');
-    return res.json();
+  renameFile(id: string, name: string): Promise<FileItem> {
+    return firstValueFrom(
+      this.http.patch<FileItem>(`${this.base}/files/${id}`, { name }),
+    );
   }
 
-  async deleteFile(id: string): Promise<void> {
-    const res = await fetch(`${this.base}/files/${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Не удалось удалить файл');
+  deleteFile(id: string): Promise<void> {
+    return firstValueFrom(
+      this.http.delete<void>(`${this.base}/files/${id}`),
+    );
   }
 
   getFileDownloadUrl(id: string): string {
     return `${this.base}/files/${id}/download`;
   }
 
-  async getFileContent(id: string): Promise<RoadmapData> {
-    const res = await fetch(`${this.base}/files/${id}/content`);
-    if (!res.ok) throw new Error('Не удалось загрузить роадмап');
-    return res.json();
+  getFileContent(id: string): Promise<RoadmapData> {
+    return firstValueFrom(
+      this.http.get<RoadmapData>(`${this.base}/files/${id}/content`),
+    );
   }
 
-  async putFileContent(id: string, data: RoadmapData): Promise<void> {
-    const res = await fetch(`${this.base}/files/${id}/content`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error('Ошибка сохранения');
+  putFileContent(id: string, data: RoadmapData): Promise<void> {
+    return firstValueFrom(
+      this.http.put<void>(`${this.base}/files/${id}/content`, data),
+    );
   }
 }
