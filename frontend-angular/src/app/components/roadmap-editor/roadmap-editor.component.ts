@@ -21,6 +21,16 @@ export class RoadmapEditorComponent implements OnInit {
   nodes: RoadmapNode[] = [];
   error: string | null = null;
 
+  selectedNodeId: string | null = null;
+  selectedLabel = '';
+  selectedContent = '';
+
+  creatingOpen = false;
+  creatingType: RoadmapNode['type'] = 'main';
+  creatingParentId: string | null = null;
+  creatingLabel = '';
+  creatingContent = '';
+
   get mainNodes(): RoadmapNode[] {
     return this.nodes
       .filter((n) => n.type === 'main')
@@ -29,6 +39,11 @@ export class RoadmapEditorComponent implements OnInit {
 
   getBranches(parentId: string): RoadmapNode[] {
     return this.nodes.filter((n) => n.type === 'branch' && n.parentId === parentId);
+  }
+
+  get selectedNode(): RoadmapNode | null {
+    if (!this.selectedNodeId) return null;
+    return this.nodes.find((n) => n.id === this.selectedNodeId) ?? null;
   }
 
   ngOnInit(): void {
@@ -40,45 +55,73 @@ export class RoadmapEditorComponent implements OnInit {
     return 'n-' + Math.random().toString(36).slice(2, 10);
   }
 
-  addMainNode(): void {
-    const label = window.prompt('Название узла основной дороги:');
-    if (!label) return;
-    const order = this.mainNodes.length;
-    this.nodes = [...this.nodes, { id: this.genId(), label, type: 'main', order }];
+  openCreateNodeModal(type: RoadmapNode['type'], parentId: string | null = null): void {
+    this.creatingOpen = true;
+    this.creatingType = type;
+    this.creatingParentId = parentId;
+    this.creatingLabel = '';
+    this.creatingContent = '';
   }
 
-  addBranch(parentId: string): void {
-    const label = window.prompt('Название ответвления:');
-    if (!label) return;
-    this.nodes = [...this.nodes, { id: this.genId(), label, type: 'branch', parentId }];
+  closeCreateNodeModal(): void {
+    this.creatingOpen = false;
   }
 
-  addSubBranch(parentId: string): void {
-    const label = window.prompt('Название подузла:');
+  createNode(): void {
+    const label = this.creatingLabel.trim();
+    const content = this.creatingContent.trim();
     if (!label) return;
-    this.nodes = [...this.nodes, { id: this.genId(), label, type: 'branch', parentId }];
+
+    const base: RoadmapNode = {
+      id: this.genId(),
+      label,
+      type: this.creatingType,
+      ...(content ? { content } : {}),
+    };
+
+    let node: RoadmapNode;
+    if (this.creatingType === 'main') {
+      const order = this.mainNodes.length;
+      node = { ...base, order };
+    } else {
+      node = { ...base, parentId: this.creatingParentId ?? undefined };
+    }
+
+    this.nodes = [...this.nodes, node];
+    this.selectNode(node.id);
+    this.creatingOpen = false;
   }
 
   updateNodeContent(id: string, content: string): void {
     this.nodes = this.nodes.map((n) => (n.id === id ? { ...n, content } : n));
   }
 
-  editingNode: RoadmapNode | null = null;
-  editingContent = '';
-
-  openNodeModal(node: RoadmapNode): void {
-    this.editingNode = node;
-    this.editingContent = node.content ?? '';
+  selectNode(nodeId: string): void {
+    this.selectedNodeId = nodeId;
+    const node = this.nodes.find((n) => n.id === nodeId);
+    this.selectedLabel = node?.label ?? '';
+    this.selectedContent = node?.content ?? '';
   }
 
-  closeNodeModal(): void {
-    this.editingNode = null;
+  clearSelection(): void {
+    this.selectedNodeId = null;
+    this.selectedLabel = '';
+    this.selectedContent = '';
   }
 
-  saveNodeContent(): void {
-    if (!this.editingNode) return;
-    this.updateNodeContent(this.editingNode.id, this.editingContent);
-    this.editingNode = null;
+  updateSelectedLabel(next: string): void {
+    if (!this.selectedNodeId) return;
+    this.selectedLabel = next;
+    this.nodes = this.nodes.map((n) => (n.id === this.selectedNodeId ? { ...n, label: next } : n));
+  }
+
+  updateSelectedContent(next: string): void {
+    if (!this.selectedNodeId) return;
+    this.selectedContent = next;
+    const trimmed = next.trim();
+    this.nodes = this.nodes.map((n) =>
+      n.id === this.selectedNodeId ? { ...n, content: trimmed ? next : undefined } : n,
+    );
   }
 
   onSave(): void {

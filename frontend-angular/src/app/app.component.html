@@ -17,7 +17,7 @@
   </header>
 
   <div class="app-body">
-    <div class="panels">
+    <div class="panels" [class.roadmap-open]="!!(editingRoadmapFile && roadmapData)">
       <aside class="tree-panel">
         <div class="tree-header">Папки</div>
         <div class="tree-scroll">
