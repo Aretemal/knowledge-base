@@ -12,21 +12,13 @@
 }
 
 .roadmap-panel {
-  width: 420px;
-  min-width: 360px;
-  max-width: 50%;
-  flex-shrink: 0;
+  flex: 1;
+  min-width: 0;
   border-left: 1px solid #3c3c3c;
   background: #252526;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 20;
-  box-shadow: -12px 0 24px rgba(0, 0, 0, 0.35);
 }
 
 .app-header {
@@ -106,7 +98,7 @@ button:hover {
 }
 
 .panels.roadmap-open {
-  padding-right: 420px;
+  padding-right: 0;
 }
 
 @media (max-width: 980px) {
@@ -115,9 +107,8 @@ button:hover {
   }
 
   .roadmap-panel {
-    width: 100%;
+    flex: 1;
     min-width: 0;
-    max-width: 100%;
   }
 }
 

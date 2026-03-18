@@ -41,112 +41,112 @@
         </div>
       </aside>
 
-      <section class="content-panel">
-        <nav class="breadcrumbs">
-          <button
-            type="button"
-            class="crumb"
-            [class.current]="currentFolderId === null"
-            (click)="selectFolder(null)"
-          >
-            Главная
-          </button>
-          @for (folder of currentFolderPath; track folder.id; let i = $index) {
-            <span class="crumb-sep">/</span>
+      @if (editingRoadmapFile && roadmapData) {
+        <section class="roadmap-panel">
+          <app-roadmap-editor
+            [file]="editingRoadmapFile"
+            [data]="roadmapData"
+            [saving]="roadmapSaving"
+            (save)="saveRoadmap($event)"
+            (close)="closeRoadmapEditor()"
+          />
+        </section>
+      } @else {
+        <section class="content-panel">
+          <nav class="breadcrumbs">
             <button
               type="button"
               class="crumb"
-              [class.current]="i === currentFolderPath.length - 1"
-              (click)="selectFolder(folder.id)"
+              [class.current]="currentFolderId === null"
+              (click)="selectFolder(null)"
             >
-              {{ folder.name }}
+              Главная
             </button>
-          }
-        </nav>
+            @for (folder of currentFolderPath; track folder.id; let i = $index) {
+              <span class="crumb-sep">/</span>
+              <button
+                type="button"
+                class="crumb"
+                [class.current]="i === currentFolderPath.length - 1"
+                (click)="selectFolder(folder.id)"
+              >
+                {{ folder.name }}
+              </button>
+            }
+          </nav>
 
-        <div
-          class="files-section"
-          [class.drop-zone-active]="dropZoneActive"
-          (dragover)="onDragOver($event)"
-          (dragleave)="onDragLeave($event)"
-          (drop)="onDrop($event)"
-        >
-          <div class="section-toolbar">
-            <h2 class="section-title">Содержимое</h2>
-            <div class="section-actions">
-              <button type="button" (click)="createFolder()">Новая папка</button>
-              @if (currentFolderId !== null) {
-                <button type="button" (click)="createRoadmap()">Новый роадмап</button>
-                <label class="upload-btn">
-                  Загрузить файлы
-                  <input type="file" multiple (change)="onFilesSelected($event)" />
-                </label>
-              } @else {
-                <span class="upload-hint">Выберите папку для загрузки файлов</span>
-              }
+          <div
+            class="files-section"
+            [class.drop-zone-active]="dropZoneActive"
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave($event)"
+            (drop)="onDrop($event)"
+          >
+            <div class="section-toolbar">
+              <h2 class="section-title">Содержимое</h2>
+              <div class="section-actions">
+                <button type="button" (click)="createFolder()">Новая папка</button>
+                @if (currentFolderId !== null) {
+                  <button type="button" (click)="createRoadmap()">Новый роадмап</button>
+                  <label class="upload-btn">
+                    Загрузить файлы
+                    <input type="file" multiple (change)="onFilesSelected($event)" />
+                  </label>
+                } @else {
+                  <span class="upload-hint">Выберите папку для загрузки файлов</span>
+                }
+              </div>
             </div>
-          </div>
-          @if (dropZoneActive) {
-            <div class="drop-overlay">Отпустите файлы для загрузки в эту папку</div>
-          }
-          @if (childFolders.length === 0 && files.length === 0 && !dropZoneActive) {
-            <p class="empty">
-              @if (currentFolderId === null) {
-                Нет папок. Создайте папку.
-              } @else {
-                В этой папке пусто. Создайте папку или перетащите сюда файлы.
-              }
-            </p>
-          } @else if (!dropZoneActive) {
-            <div class="items-list">
-              @for (folder of childFolders; track folder.id) {
-                <div class="item-row folder-row">
-                  <span class="item-icon">📁</span>
-                  <button type="button" class="item-name" (click)="selectFolder(folder.id)">
-                    {{ folder.name }}
-                  </button>
-                  <div class="item-actions">
-                    <button type="button" class="icon-btn" (click)="renameFolder(folder)" title="Переименовать">✎</button>
-                    <button type="button" class="icon-btn" (click)="deleteFolder(folder)" title="Удалить">✕</button>
-                  </div>
-                </div>
-              }
-              @for (file of files; track file.id) {
-                <div class="item-row file-row">
-                  <span class="item-icon">{{ isRoadmapFile(file) ? '🗺' : '📄' }}</span>
-                  @if (isRoadmapFile(file)) {
-                    <button type="button" class="item-name item-link" (click)="openRoadmap(file)">
-                      {{ file.name }}
+            @if (dropZoneActive) {
+              <div class="drop-overlay">Отпустите файлы для загрузки в эту папку</div>
+            }
+            @if (childFolders.length === 0 && files.length === 0 && !dropZoneActive) {
+              <p class="empty">
+                @if (currentFolderId === null) {
+                  Нет папок. Создайте папку.
+                } @else {
+                  В этой папке пусто. Создайте папку или перетащите сюда файлы.
+                }
+              </p>
+            } @else if (!dropZoneActive) {
+              <div class="items-list">
+                @for (folder of childFolders; track folder.id) {
+                  <div class="item-row folder-row">
+                    <span class="item-icon">📁</span>
+                    <button type="button" class="item-name" (click)="selectFolder(folder.id)">
+                      {{ folder.name }}
                     </button>
-                    <a [href]="getFileDownloadUrl(file.id)" target="_blank" rel="noreferrer" class="icon-btn" title="Скачать">📥</a>
-                  } @else {
-                    <a [href]="getFileDownloadUrl(file.id)" target="_blank" rel="noreferrer" class="item-name item-link">
-                      {{ file.name }}
-                    </a>
-                  }
-                  <span class="item-meta">{{ formatSize(file.size) }}</span>
-                  <div class="item-actions">
-                    <button type="button" class="icon-btn" (click)="renameFile(file)" title="Переименовать">✎</button>
-                    <button type="button" class="icon-btn" (click)="deleteFile(file)" title="Удалить">✕</button>
+                    <div class="item-actions">
+                      <button type="button" class="icon-btn" (click)="renameFolder(folder)" title="Переименовать">✎</button>
+                      <button type="button" class="icon-btn" (click)="deleteFolder(folder)" title="Удалить">✕</button>
+                    </div>
                   </div>
-                </div>
-              }
-            </div>
-          }
-        </div>
-      </section>
+                }
+                @for (file of files; track file.id) {
+                  <div class="item-row file-row">
+                    <span class="item-icon">{{ isRoadmapFile(file) ? '🗺' : '📄' }}</span>
+                    @if (isRoadmapFile(file)) {
+                      <button type="button" class="item-name item-link" (click)="openRoadmap(file)">
+                        {{ file.name }}
+                      </button>
+                      <a [href]="getFileDownloadUrl(file.id)" target="_blank" rel="noreferrer" class="icon-btn" title="Скачать">📥</a>
+                    } @else {
+                      <a [href]="getFileDownloadUrl(file.id)" target="_blank" rel="noreferrer" class="item-name item-link">
+                        {{ file.name }}
+                      </a>
+                    }
+                    <span class="item-meta">{{ formatSize(file.size) }}</span>
+                    <div class="item-actions">
+                      <button type="button" class="icon-btn" (click)="renameFile(file)" title="Переименовать">✎</button>
+                      <button type="button" class="icon-btn" (click)="deleteFile(file)" title="Удалить">✕</button>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </section>
+      }
     </div>
-
-    @if (editingRoadmapFile && roadmapData) {
-      <aside class="roadmap-panel">
-        <app-roadmap-editor
-          [file]="editingRoadmapFile"
-          [data]="roadmapData"
-          [saving]="roadmapSaving"
-          (save)="saveRoadmap($event)"
-          (close)="closeRoadmapEditor()"
-        />
-      </aside>
-    }
   </div>
 </main>

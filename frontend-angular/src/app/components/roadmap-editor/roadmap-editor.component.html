@@ -2,9 +2,19 @@
   <header class="roadmap-editor-header">
     <h2>Роадмап: {{ file.name }}</h2>
     <div class="roadmap-editor-actions">
-      <button type="button" class="btn btn-primary" (click)="onSave()" [disabled]="saving">
-        {{ saving ? 'Сохранение…' : 'Сохранить' }}
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="mode = mode === 'view' ? 'edit' : 'view'"
+        [disabled]="saving"
+      >
+        {{ mode === 'view' ? 'Редактировать' : 'Просмотр' }}
       </button>
+      @if (mode === 'edit') {
+        <button type="button" class="btn btn-primary" (click)="onSave()" [disabled]="saving || !isDirty">
+          {{ saving ? 'Сохранение…' : isDirty ? 'Сохранить' : 'Сохранено' }}
+        </button>
+      }
       <button type="button" class="btn btn-secondary" (click)="close.emit()">Закрыть</button>
     </div>
   </header>
@@ -12,142 +22,172 @@
     <p class="roadmap-error">{{ error }}</p>
   }
   <div class="roadmap-editor-body">
-    <section class="roadmap-split">
-      <div class="roadmap-graph-toolbar">
-        <input
-          type="text"
-          class="roadmap-title-inline"
-          [(ngModel)]="title"
-          placeholder="Название роадмапа"
-        />
-        <button
-          type="button"
-          class="btn btn-small btn-add-main"
-          (click)="openCreateNodeModal('main', null)"
-        >
-          + Узел дороги
-        </button>
-      </div>
-      <div class="roadmap-split-body">
-        <div class="roadmap-graph-wrap">
+    @if (mode === 'view') {
+      <section class="toc">
+        @if (title) {
+          <h3 class="toc-title">{{ title }}</h3>
+        }
         @if (mainNodes.length === 0) {
-          <div class="roadmap-graph-empty">
-            <p>Нет узлов</p>
+          <div class="toc-empty">
+            <p>Пока нет узлов.</p>
+            <p class="toc-empty-sub">Нажмите “Редактировать”, чтобы добавить оглавление.</p>
+          </div>
+        } @else {
+          <div class="toc-list" role="tree" aria-label="Оглавление роадмапа">
+            @for (node of mainNodes; track node.id) {
+              <div class="toc-item toc-main" role="treeitem">
+                <button
+                  type="button"
+                  class="toc-btn"
+                  (click)="selectedNodeId === node.id ? clearSelection() : selectNode(node.id)"
+                  [class.toc-selected]="selectedNodeId === node.id"
+                >
+                  {{ node.label }}
+                </button>
+                @if (selectedNodeId === node.id && (node.content || getBranches(node.id).length)) {
+                  <div class="toc-body" role="group">
+                    @if (node.content) {
+                      <div class="toc-content">{{ node.content }}</div>
+                    }
+                    @for (branch of getBranches(node.id); track branch.id) {
+                      <div class="toc-item toc-branch" role="treeitem">
+                        <button
+                          type="button"
+                          class="toc-btn toc-btn-branch"
+                          (click)="selectedNodeId === branch.id ? clearSelection() : selectNode(branch.id)"
+                          [class.toc-selected]="selectedNodeId === branch.id"
+                        >
+                          {{ branch.label }}
+                        </button>
+                        @if (selectedNodeId === branch.id && (branch.content || getBranches(branch.id).length)) {
+                          <div class="toc-body" role="group">
+                            @if (branch.content) {
+                              <div class="toc-content">{{ branch.content }}</div>
+                            }
+                            @for (sub of getBranches(branch.id); track sub.id) {
+                              <div class="toc-item toc-sub" role="treeitem">
+                                <button
+                                  type="button"
+                                  class="toc-btn toc-btn-sub"
+                                  (click)="selectedNodeId === sub.id ? clearSelection() : selectNode(sub.id)"
+                                  [class.toc-selected]="selectedNodeId === sub.id"
+                                >
+                                  {{ sub.label }}
+                                </button>
+                                @if (selectedNodeId === sub.id && sub.content) {
+                                  <div class="toc-body" role="group">
+                                    <div class="toc-content">{{ sub.content }}</div>
+                                  </div>
+                                }
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </section>
+    } @else {
+      <section class="outline">
+        <div class="outline-toolbar">
+          <input
+            type="text"
+            class="outline-title"
+            [(ngModel)]="title"
+            placeholder="Название роадмапа"
+          />
+          <button type="button" class="btn btn-small" (click)="openCreateNodeModal('main', null)">+ Раздел</button>
+        </div>
+
+        @if (mainNodes.length === 0) {
+          <div class="outline-empty">
+            <p>Нет узлов.</p>
             <button type="button" class="btn btn-primary" (click)="openCreateNodeModal('main', null)">
-              + Добавить первый узел дороги
+              + Добавить первый раздел
             </button>
           </div>
         } @else {
-          @if (title) {
-            <h3 class="graph-title">{{ title }}</h3>
-          }
-          <div class="graph-road graph-road-vertical" role="tree" aria-label="Роадмап">
+          <div class="outline-list" role="tree" aria-label="Редактор оглавления">
             @for (node of mainNodes; track node.id) {
-              <div class="graph-main-block" role="treeitem">
-                <button
-                  type="button"
-                  class="graph-node-main graph-node-clickable"
-                  (click)="selectNode(node.id)"
-                  [class.graph-node-selected]="selectedNodeId === node.id"
-                  title="Выбрать узел"
-                >
-                  <span class="graph-node-main-label">{{ node.label }}</span>
-                </button>
-
-                <div class="graph-branches graph-branches-vertical" role="group" aria-label="Ответвления">
-                  @for (branch of getBranches(node.id); track branch.id) {
-                    <div class="graph-branch-block" role="treeitem">
-                      <button
-                        type="button"
-                        class="graph-node-branch graph-node-clickable"
-                        (click)="selectNode(branch.id)"
-                        [class.graph-node-selected]="selectedNodeId === branch.id"
-                        title="Выбрать узел"
-                      >
-                        <span class="graph-node-branch-label">{{ branch.label }}</span>
-                      </button>
-
-                      <div class="graph-sub-branches graph-sub-branches-vertical" role="group" aria-label="Подузлы">
-                        @for (sub of getBranches(branch.id); track sub.id) {
-                          <button
-                            type="button"
-                            class="graph-node-sub graph-node-clickable"
-                            (click)="selectNode(sub.id)"
-                            [class.graph-node-selected]="selectedNodeId === sub.id"
-                            title="Выбрать узел"
-                          >
-                            <span class="graph-node-branch-label">{{ sub.label }}</span>
-                          </button>
-                        }
-                        <button
-                          type="button"
-                          class="graph-btn-branch graph-btn-sub"
-                          (click)="openCreateNodeModal('branch', branch.id)"
-                        >
-                          + Подузел
-                        </button>
-                      </div>
-                    </div>
-                  }
-                  <button
-                    type="button"
-                    class="graph-btn-branch"
-                    (click)="openCreateNodeModal('branch', node.id)"
-                  >
+              <div class="outline-card outline-main" role="treeitem">
+                <div class="outline-row">
+                  <span class="outline-badge">Раздел</span>
+                  <input
+                    type="text"
+                    class="outline-input"
+                    [ngModel]="node.label"
+                    (ngModelChange)="updateNodeLabel(node.id, $event)"
+                    placeholder="Название раздела"
+                  />
+                  <button type="button" class="btn btn-small" (click)="openCreateNodeModal('branch', node.id)">
                     + Ответвление
                   </button>
                 </div>
+                <textarea
+                  class="outline-textarea"
+                  [ngModel]="node.content ?? ''"
+                  (ngModelChange)="updateNodeContent(node.id, $event)"
+                  placeholder="Описание раздела…"
+                  rows="4"
+                ></textarea>
+
+                @for (branch of getBranches(node.id); track branch.id) {
+                  <div class="outline-card outline-branch" role="treeitem">
+                    <div class="outline-row">
+                      <span class="outline-badge outline-badge-branch">Ветка</span>
+                      <input
+                        type="text"
+                        class="outline-input"
+                        [ngModel]="branch.label"
+                        (ngModelChange)="updateNodeLabel(branch.id, $event)"
+                        placeholder="Название ветки"
+                      />
+                      <button type="button" class="btn btn-small" (click)="openCreateNodeModal('branch', branch.id)">
+                        + Подузел
+                      </button>
+                    </div>
+                    <textarea
+                      class="outline-textarea"
+                      [ngModel]="branch.content ?? ''"
+                      (ngModelChange)="updateNodeContent(branch.id, $event)"
+                      placeholder="Описание ветки…"
+                      rows="3"
+                    ></textarea>
+
+                    @for (sub of getBranches(branch.id); track sub.id) {
+                      <div class="outline-card outline-sub" role="treeitem">
+                        <div class="outline-row">
+                          <span class="outline-badge outline-badge-sub">Узел</span>
+                          <input
+                            type="text"
+                            class="outline-input"
+                            [ngModel]="sub.label"
+                            (ngModelChange)="updateNodeLabel(sub.id, $event)"
+                            placeholder="Название узла"
+                          />
+                        </div>
+                        <textarea
+                          class="outline-textarea"
+                          [ngModel]="sub.content ?? ''"
+                          (ngModelChange)="updateNodeContent(sub.id, $event)"
+                          placeholder="Описание узла…"
+                          rows="3"
+                        ></textarea>
+                      </div>
+                    }
+                  </div>
+                }
               </div>
             }
-
-            <button type="button" class="graph-btn-add-main" (click)="openCreateNodeModal('main', null)">
-              + Узел
-            </button>
           </div>
         }
-        </div>
-
-        <aside class="node-details" aria-label="Свойства узла">
-          @if (selectedNode) {
-            <div class="node-card">
-              <div class="node-card-header">
-                <h3 class="node-card-title">Узел</h3>
-                <button type="button" class="node-card-close" (click)="clearSelection()" title="Закрыть">
-                  &#10005;
-                </button>
-              </div>
-              <div class="node-card-body">
-                <label class="node-card-label">Название</label>
-                <input
-                  type="text"
-                  class="node-card-input"
-                  [ngModel]="selectedLabel"
-                  (ngModelChange)="updateSelectedLabel($event)"
-                  placeholder="Название узла"
-                />
-                <label class="node-card-label">Описание</label>
-                <textarea
-                  class="node-card-textarea"
-                  [ngModel]="selectedContent"
-                  (ngModelChange)="updateSelectedContent($event)"
-                  placeholder="Текстовое описание узла…"
-                  rows="10"
-                ></textarea>
-                <div class="node-card-meta">
-                  <span class="node-card-meta-item">id: {{ selectedNode.id }}</span>
-                  <span class="node-card-meta-item">тип: {{ selectedNode.type }}</span>
-                </div>
-              </div>
-            </div>
-          } @else {
-            <div class="node-card node-card-empty">
-              <p class="node-card-empty-title">Выберите узел</p>
-              <p class="node-card-empty-sub">Кликните по узлу слева, чтобы редактировать название и описание.</p>
-            </div>
-          }
-        </aside>
-      </div>
-    </section>
+      </section>
+    }
   </div>
 
   @if (creatingOpen) {

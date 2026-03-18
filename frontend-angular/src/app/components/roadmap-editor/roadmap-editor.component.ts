@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { FileItem, RoadmapData, RoadmapNode } from '../../models';
 
@@ -17,9 +17,12 @@ export class RoadmapEditorComponent implements OnInit {
   @Output() save = new EventEmitter<RoadmapData>();
   @Output() close = new EventEmitter<void>();
 
+  mode: 'view' | 'edit' = 'view';
   title = '';
   nodes: RoadmapNode[] = [];
   error: string | null = null;
+
+  private baseline = '';
 
   selectedNodeId: string | null = null;
   selectedLabel = '';
@@ -41,14 +44,35 @@ export class RoadmapEditorComponent implements OnInit {
     return this.nodes.filter((n) => n.type === 'branch' && n.parentId === parentId);
   }
 
+  get isDirty(): boolean {
+    return this.baseline !== this.serialize();
+  }
+
   get selectedNode(): RoadmapNode | null {
     if (!this.selectedNodeId) return null;
     return this.nodes.find((n) => n.id === this.selectedNodeId) ?? null;
   }
 
   ngOnInit(): void {
-    this.title = this.data.title;
-    this.nodes = [...this.data.nodes];
+    this.resetFromInputs();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['data'] && !changes['data'].firstChange) {
+      this.resetFromInputs();
+    }
+  }
+
+  private resetFromInputs(): void {
+    this.mode = 'view';
+    this.title = this.data?.title ?? '';
+    this.nodes = [...(this.data?.nodes ?? [])];
+    this.clearSelection();
+    this.baseline = this.serialize();
+  }
+
+  private serialize(): string {
+    return JSON.stringify({ title: this.title, nodes: this.nodes });
   }
 
   private genId(): string {
@@ -93,7 +117,12 @@ export class RoadmapEditorComponent implements OnInit {
   }
 
   updateNodeContent(id: string, content: string): void {
-    this.nodes = this.nodes.map((n) => (n.id === id ? { ...n, content } : n));
+    const trimmed = content.trim();
+    this.nodes = this.nodes.map((n) => (n.id === id ? { ...n, content: trimmed ? content : undefined } : n));
+  }
+
+  updateNodeLabel(id: string, label: string): void {
+    this.nodes = this.nodes.map((n) => (n.id === id ? { ...n, label } : n));
   }
 
   selectNode(nodeId: string): void {
