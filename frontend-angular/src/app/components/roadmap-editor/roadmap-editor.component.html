@@ -20,72 +20,18 @@
           [(ngModel)]="title"
           placeholder="Название роадмапа"
         />
-        <button type="button" class="btn btn-small" (click)="openCreateNodeModal('main', null)">+ Раздел</button>
+        <button type="button" class="btn btn-small" (click)="createEmptyNode('main', null)">+ Раздел</button>
       </div>
 
       <div class="graph-stage">
-        <div class="graph-grid-area">
+        <div class="graph-cy-wrap">
+          <div #cyContainer class="graph-cy-canvas" role="application" aria-label="Граф роадмапа"></div>
           @if (mainNodes.length === 0) {
-            <div class="graph-edit-empty">
+            <div class="graph-edit-empty graph-edit-empty--overlay">
               <p>Нет узлов.</p>
-              <button type="button" class="btn btn-primary" (click)="openCreateNodeModal('main', null)">
+              <button type="button" class="btn btn-primary" (click)="createEmptyNode('main', null)">
                 + Добавить первый раздел
               </button>
-            </div>
-          } @else {
-            <div class="graph-edit-tree" role="tree" aria-label="Дерево роадмапа">
-              @for (node of mainNodes; track node.id) {
-                <div class="graph-edit-row" role="treeitem">
-                  <button
-                    type="button"
-                    class="graph-tile graph-tile-main"
-                    (click)="selectNode(node.id)"
-                    [class.graph-tile-selected]="selectedNodeId === node.id"
-                    [style.backgroundColor]="getNodeColor(node)"
-                    [style.borderColor]="getNodeColor(node)"
-                    [style.color]="getTileTextColor(getNodeColor(node))"
-                    title="Открыть описание"
-                  >
-                    {{ node.label }}
-                  </button>
-
-                  <div class="graph-edit-branches">
-                    @for (branch of getBranches(node.id); track branch.id) {
-                      <div class="graph-edit-branch-row" role="treeitem">
-                        <div class="graph-edit-sub-stack">
-                          @for (sub of getBranches(branch.id); track sub.id) {
-                            <button
-                              type="button"
-                              class="graph-tile graph-tile-sub"
-                              (click)="selectNode(sub.id)"
-                              [class.graph-tile-selected]="selectedNodeId === sub.id"
-                              [style.backgroundColor]="getNodeColor(sub)"
-                              [style.borderColor]="getNodeColor(sub)"
-                              [style.color]="getTileTextColor(getNodeColor(sub))"
-                              title="Открыть описание"
-                            >
-                              {{ sub.label }}
-                            </button>
-                          }
-                        </div>
-
-                        <button
-                          type="button"
-                          class="graph-tile graph-tile-branch"
-                          (click)="selectNode(branch.id)"
-                          [class.graph-tile-selected]="selectedNodeId === branch.id"
-                          [style.backgroundColor]="getNodeColor(branch)"
-                          [style.borderColor]="getNodeColor(branch)"
-                          [style.color]="getTileTextColor(getNodeColor(branch))"
-                          title="Открыть описание"
-                        >
-                          {{ branch.label }}
-                        </button>
-                      </div>
-                    }
-                  </div>
-                </div>
-              }
             </div>
           }
         </div>
@@ -113,6 +59,7 @@
                 class="graph-drawer-input"
                 [ngModel]="selectedLabel"
                 (ngModelChange)="updateSelectedLabel($event)"
+                placeholder="Название узла"
               />
             </div>
 
@@ -124,6 +71,19 @@
                 (ngModelChange)="updateSelectedContent($event)"
                 rows="10"
               ></textarea>
+            </div>
+
+            <div class="graph-drawer-field">
+              <label class="graph-drawer-label">Цвет узла</label>
+              <select
+                class="graph-drawer-input"
+                [ngModel]="selectedColorType"
+                (ngModelChange)="updateSelectedColorType($event)"
+              >
+                @for (option of colorOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              </select>
             </div>
 
             <div class="graph-drawer-id">id: {{ selectedNode.id }}</div>
@@ -145,44 +105,4 @@
       </aside>
     </div>
   </div>
-
-  @if (creatingOpen) {
-    <div
-      class="node-modal-overlay"
-      role="dialog"
-      aria-label="Создание узла"
-      (click)="closeCreateNodeModal()"
-    >
-      <div class="node-modal" (click)="$event.stopPropagation()">
-        <div class="node-modal-header">
-          <h3 class="node-modal-title">Новый узел</h3>
-          <button type="button" class="node-modal-close" (click)="closeCreateNodeModal()" title="Закрыть">
-            &#10005;
-          </button>
-        </div>
-        <div class="node-modal-body">
-          <label class="node-modal-label">Название</label>
-          <input
-            type="text"
-            class="node-modal-input"
-            [(ngModel)]="creatingLabel"
-            placeholder="Например: TypeScript основы"
-          />
-          <label class="node-modal-label node-modal-label-spaced">Описание</label>
-          <textarea
-            class="node-modal-textarea"
-            [(ngModel)]="creatingContent"
-            placeholder="Введите описание или заметки по этому узлу…"
-            rows="8"
-          ></textarea>
-        </div>
-        <div class="node-modal-footer">
-          <button type="button" class="btn btn-primary" (click)="createNode()" [disabled]="!creatingLabel.trim()">
-            Создать
-          </button>
-          <button type="button" class="btn btn-secondary" (click)="closeCreateNodeModal()">Отмена</button>
-        </div>
-      </div>
-    </div>
-  }
 </div>

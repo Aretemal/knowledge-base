@@ -32,6 +32,24 @@ interface UploadedFileShape {
   path: string;
 }
 
+type NodeKind = 'main' | 'branch';
+type NodeColorType = 'blue' | 'red' | 'yellow' | 'white' | 'orange' | 'green';
+
+interface RoadmapNodeShape {
+  id: string;
+  label: string;
+  type: NodeKind;
+  order?: number;
+  parentId?: string;
+  content?: string;
+  colorType?: NodeColorType;
+}
+
+interface RoadmapDataShape {
+  title: string;
+  nodes: RoadmapNodeShape[];
+}
+
 /** Исправляет имя файла: браузер может отправить UTF-8 как latin1 */
 function decodeFileName(name: string): string {
   try {
@@ -39,6 +57,59 @@ function decodeFileName(name: string): string {
   } catch {
     return name;
   }
+}
+
+function mapLegacyColorToType(color: unknown): NodeColorType | undefined {
+  if (typeof color !== 'string') return undefined;
+  const normalized = color.trim().toLowerCase();
+  const byHex: Record<string, NodeColorType> = {
+    '#3498db': 'blue',
+    '#e74c3c': 'red',
+    '#f6c445': 'yellow',
+    '#ffffff': 'white',
+    '#f2994a': 'orange',
+    '#33c46b': 'green',
+  };
+  return byHex[normalized];
+}
+
+function isColorType(value: unknown): value is NodeColorType {
+  return (
+    value === 'blue' ||
+    value === 'red' ||
+    value === 'yellow' ||
+    value === 'white' ||
+    value === 'orange' ||
+    value === 'green'
+  );
+}
+
+function normalizeRoadmapData(input: unknown): RoadmapDataShape {
+  const raw = (input ?? {}) as Record<string, unknown>;
+  const nodesRaw = Array.isArray(raw['nodes']) ? raw['nodes'] : [];
+
+  const nodes: RoadmapNodeShape[] = nodesRaw
+    .map((item) => (item ?? {}) as Record<string, unknown>)
+    .filter((n) => typeof n['id'] === 'string' && typeof n['label'] === 'string')
+    .map((n) => {
+      const normalizedType: NodeKind = n['type'] === 'main' ? 'main' : 'branch';
+      const explicitColorType = isColorType(n['colorType']) ? n['colorType'] : undefined;
+      const migratedColorType = explicitColorType ?? mapLegacyColorToType(n['color']);
+      return {
+        id: n['id'] as string,
+        label: n['label'] as string,
+        type: normalizedType,
+        ...(typeof n['order'] === 'number' ? { order: n['order'] } : {}),
+        ...(typeof n['parentId'] === 'string' ? { parentId: n['parentId'] } : {}),
+        ...(typeof n['content'] === 'string' ? { content: n['content'] } : {}),
+        ...(migratedColorType ? { colorType: migratedColorType } : {}),
+      };
+    });
+
+  return {
+    title: typeof raw['title'] === 'string' ? raw['title'] : 'Роадмап',
+    nodes,
+  };
 }
 
 @Controller('files')
@@ -135,8 +206,15 @@ export class FilesController {
     if (!raw.trim()) {
       raw = JSON.stringify({ title: 'Роадмап', nodes: [] });
     }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw) as unknown;
+    } catch {
+      parsed = { title: 'Роадмап', nodes: [] };
+    }
+    const normalized = normalizeRoadmapData(parsed);
     res.setHeader('Content-Type', 'application/json');
-    res.send(raw);
+    res.send(JSON.stringify(normalized));
   }
 
   @Put(':id/content')
@@ -149,9 +227,21 @@ export class FilesController {
       throw new NotFoundException('File not found');
     }
     const filePath = this.storage.getPhysicalPath(file);
-    const body =
-      typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-    await fs.promises.writeFile(filePath, body, 'utf8');
+    let parsed: unknown;
+    try {
+      parsed =
+        typeof req.body === 'string'
+          ? (JSON.parse(req.body) as unknown)
+          : (req.body as unknown);
+    } catch {
+      throw new BadRequestException('Invalid roadmap JSON');
+    }
+    const normalized = normalizeRoadmapData(parsed);
+    await fs.promises.writeFile(
+      filePath,
+      JSON.stringify(normalized, null, 2),
+      'utf8',
+    );
     return { ok: true };
   }
 }

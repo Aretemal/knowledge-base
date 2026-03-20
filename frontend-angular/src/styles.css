@@ -1,7 +1,13 @@
+@import '@angular/material/prebuilt-themes/azure-blue.css';
+
+html {
+  color-scheme: light;
+}
+
 body {
   margin: 0;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  background: #252526;
-  color: #cccccc;
+  background: #ffffff;
+  color: #1f2937;
   font-size: 13px;
 }

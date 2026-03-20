@@ -28,8 +28,8 @@ export interface RoadmapNode {
   type: 'main' | 'branch';
   order?: number;
   parentId?: string;
-  /** Пользовательский цвет узла (hex: #RRGGBB) */
-  color?: string;
+  /** Палитра узла, хранится отдельно от type */
+  colorType?: 'blue' | 'red' | 'yellow' | 'white' | 'orange' | 'green';
   /** Текстовое содержимое узла (описание) */
   content?: string;
 }
