@@ -107,7 +107,7 @@ export class StorageService implements OnModuleInit {
       foldersToDelete.has(f.folderId),
     );
     for (const file of filesToDelete) {
-      await this.safeUnlink(file.storagePath);
+      await this.safeUnlink(this.getPhysicalPath(file));
     }
 
     data.files = data.files.filter(
@@ -147,6 +147,7 @@ export class StorageService implements OnModuleInit {
       id: randomUUID(),
       createdAt: now,
       ...params,
+      storagePath: path.basename(params.storagePath),
     };
     data.files.push(file);
     await this.writeMetadata(data);
@@ -170,13 +171,17 @@ export class StorageService implements OnModuleInit {
     if (!file) {
       return;
     }
-    await this.safeUnlink(file.storagePath);
+    await this.safeUnlink(this.getPhysicalPath(file));
     data.files = data.files.filter((f) => f.id !== id);
     await this.writeMetadata(data);
   }
 
+  /**
+   * Файл на диске всегда лежит в {@link filesDir}; в метаданных хранится только имя (uuid.ext),
+   * иначе после переноса проекта ломаются абсолютные пути вроде .../kb-svelte-nest/...
+   */
   getPhysicalPath(file: FileEntity): string {
-    return file.storagePath;
+    return path.join(this.filesDir, path.basename(file.storagePath));
   }
 
   private async ensureDirs() {
@@ -188,12 +193,29 @@ export class StorageService implements OnModuleInit {
       await fs.promises.access(this.metadataPath, fs.constants.F_OK);
       await this.migrateRemoveRoot();
       await this.migrateFixFileNamesEncoding();
+      await this.migrateStoragePathsToBasenames();
     } catch {
       const initial: MetadataStore = {
         folders: [],
         files: [],
       };
       await this.writeMetadata(initial);
+    }
+  }
+
+  /** Старые записи хранили полный путь к файлу — при смене папки проекта получаем ENOENT. */
+  private async migrateStoragePathsToBasenames(): Promise<void> {
+    const data = await this.readMetadata();
+    let changed = false;
+    for (const f of data.files) {
+      const normalized = path.basename(f.storagePath);
+      if (f.storagePath !== normalized) {
+        f.storagePath = normalized;
+        changed = true;
+      }
+    }
+    if (changed) {
+      await this.writeMetadata(data);
     }
   }
 

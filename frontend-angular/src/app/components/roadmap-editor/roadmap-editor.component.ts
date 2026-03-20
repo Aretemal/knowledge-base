@@ -22,8 +22,6 @@ cytoscape.use(dagre);
 
 type NodeColorType = NonNullable<RoadmapNode['colorType']>;
 
-const CY_VIRTUAL_ROOT = '__cy_virtual_root__';
-
 @Component({
   selector: 'app-roadmap-editor',
   standalone: true,
@@ -115,8 +113,21 @@ export class RoadmapEditorComponent implements OnInit, OnChanges, AfterViewInit,
     this.baseline = this.serialize();
   }
 
+  private nodesForPayload(): RoadmapNode[] {
+    return this.nodes.map((n) => {
+      const { childrenDisplay: _c, ...rest } = n;
+      void _c;
+      return rest;
+    });
+  }
+
   private serialize(): string {
-    return JSON.stringify({ title: this.title, nodes: this.nodes });
+    const payload: RoadmapData = {
+      title: this.title,
+      nodes: this.nodesForPayload(),
+      defaultChildrenDisplay: 'single-path-block',
+    };
+    return JSON.stringify(payload);
   }
 
   private genId(): string {
@@ -132,6 +143,7 @@ export class RoadmapEditorComponent implements OnInit, OnChanges, AfterViewInit,
       minZoom: 0.2,
       maxZoom: 2,
       wheelSensitivity: 0.35,
+      autounselectify: true,
       style: [
         {
           selector: 'node',
@@ -140,33 +152,50 @@ export class RoadmapEditorComponent implements OnInit, OnChanges, AfterViewInit,
             'text-valign': 'center',
             'text-halign': 'center',
             'text-wrap': 'ellipsis',
-            'text-max-width': '144px',
+            'text-max-width': '104px',
             'background-color': 'data(colorHex)',
-            'border-color': 'rgba(0,0,0,0.14)',
-            'border-width': 2,
+            'border-color': 'rgba(0,0,0,0.1)',
+            'border-width': 1,
             color: 'data(textColor)',
-            width: 160,
-            height: 44,
+            width: 118,
+            height: 32,
             shape: 'roundrectangle',
-            'font-size': '12px',
+            'font-size': '10px',
             'font-weight': 'bold',
             'text-outline-width': 0,
           },
         },
         {
-          selector: 'node.cy-virtual',
+          selector: 'node[lightTile = "yes"]',
           style: {
-            opacity: 0,
-            width: 1,
-            height: 1,
-            events: 'no',
+            'background-color': '#ffffff',
+            'border-color': '#000000',
+            'border-width': 1,
+            color: '#111111',
           },
         },
         {
-          selector: 'node:selected',
+          selector: 'node.cy-hover',
           style: {
-            'border-width': 3,
-            'border-color': '#e74c3c',
+            'background-blacken': 0.12,
+          },
+        },
+        {
+          selector: 'node[lightTile = "yes"].cy-hover',
+          style: {
+            'background-blacken': 0,
+            'background-color': '#f3f4f6',
+          },
+        },
+        {
+          selector: 'node.cy-cluster',
+          style: {
+            label: '',
+            'background-opacity': 0.06,
+            'background-color': '#94a3b8',
+            'border-width': 0,
+            padding: '10px',
+            events: 'no',
           },
         },
         {
@@ -181,15 +210,34 @@ export class RoadmapEditorComponent implements OnInit, OnChanges, AfterViewInit,
             opacity: 0.95,
           },
         },
+        {
+          selector: 'edge.cy-edge-main-chain',
+          style: {
+            'taxi-direction': 'vertical',
+            'line-color': '#94a3b8',
+            width: 3,
+            opacity: 1,
+          },
+        },
       ],
     });
 
     this.cy.on('tap', 'node', (evt) => {
-      const id = evt.target.id();
-      if (id === CY_VIRTUAL_ROOT) return;
+      const t = evt.target;
+      if (t.hasClass('cy-cluster')) return;
+      const id = t.id();
       this.zone.run(() => {
         this.selectNode(id);
       });
+    });
+
+    this.cy.on('mouseover', 'node', (evt) => {
+      const t = evt.target;
+      if (t.hasClass('cy-cluster')) return;
+      t.addClass('cy-hover');
+    });
+    this.cy.on('mouseout', 'node', (evt) => {
+      evt.target.removeClass('cy-hover');
     });
 
     this.cy.on('tap', (evt) => {
@@ -198,8 +246,224 @@ export class RoadmapEditorComponent implements OnInit, OnChanges, AfterViewInit,
       }
     });
 
+    this.cy.on('dragfreeon', 'node', (evt) => {
+      const t = evt.target;
+      if (t.hasClass('cy-cluster')) return;
+      const id = t.id();
+      if (!this.nodes.some((n) => n.id === id)) return;
+      this.zone.run(() => this.persistNodePositionsFromCy());
+    });
+
     window.addEventListener('resize', this.resizeListener);
     this.refreshCyGraph();
+  }
+
+  private clusterId(parentId: string): string {
+    return `cy-cluster-${parentId}`;
+  }
+
+  private nodeDepth(id: string): number {
+    let d = 0;
+    let cur = this.nodes.find((n) => n.id === id);
+    while (cur?.parentId) {
+      d += 1;
+      cur = this.nodes.find((n) => n.id === cur!.parentId);
+    }
+    return d;
+  }
+
+  private directChildren(parentId: string): RoadmapNode[] {
+    return this.nodes.filter((n) => n.parentId === parentId);
+  }
+
+  /** Все потомки раздела (без самого main): ветки и подветки. */
+  private subtreeMemberIds(mainId: string): Set<string> {
+    const out = new Set<string>();
+    const walk = (pid: string) => {
+      for (const c of this.directChildren(pid)) {
+        out.add(c.id);
+        walk(c.id);
+      }
+    };
+    walk(mainId);
+    return out;
+  }
+
+  /** Compound-узлы кластеров внутри поддерева данного main. */
+  private clusterIdsForSubtree(mainId: string): Set<string> {
+    const scope = new Set<string>([mainId, ...this.subtreeMemberIds(mainId)]);
+    const clusters = new Set<string>();
+    for (const id of scope) {
+      if (this.directChildren(id).length === 0) continue;
+      clusters.add(this.clusterId(id));
+    }
+    return clusters;
+  }
+
+  /**
+   * Логи раскладки: в dev по умолчанию; в prod выключите, поставив false.
+   * Сообщения с префиксом [RoadmapLayout] — фильтр в консоли браузера.
+   */
+  private readonly roadmapLayoutDebug = false;
+
+  private layoutLog(...args: unknown[]): void {
+    if (!this.roadmapLayoutDebug) return;
+    if (typeof console !== 'undefined' && console.log) {
+      console.log('[RoadmapLayout]', ...args);
+    }
+  }
+
+  private collectSubtreeLayoutForMain(cy: Core, mainId: string): ReturnType<Core['collection']> {
+    const memberSet = this.subtreeMemberIds(mainId);
+    const clusterSet = this.clusterIdsForSubtree(mainId);
+    const layoutIds = new Set<string>([...memberSet, ...clusterSet]);
+
+    let coll = cy.collection();
+    for (const id of layoutIds) {
+      const el = cy.getElementById(id);
+      if (el.nonempty()) coll = coll.union(el);
+    }
+    cy.edges().forEach((e) => {
+      const s = e.source().id();
+      const t = e.target().id();
+      if (layoutIds.has(s) && layoutIds.has(t)) {
+        coll = coll.union(e);
+      }
+    });
+    return coll;
+  }
+
+  private nodeHasSavedPosition(n: RoadmapNode): boolean {
+    return (
+      typeof n.x === 'number' &&
+      typeof n.y === 'number' &&
+      Number.isFinite(n.x) &&
+      Number.isFinite(n.y)
+    );
+  }
+
+  /** После автораскладки возвращаем узлы на координаты из файла (если были сохранены). */
+  private restoreSavedRoadmapNodePositions(): void {
+    if (!this.cy) return;
+    for (const n of this.nodes) {
+      if (!this.nodeHasSavedPosition(n)) continue;
+      const el = this.cy.getElementById(n.id);
+      if (el.nonempty()) {
+        el.position({ x: n.x as number, y: n.y as number });
+      }
+    }
+  }
+
+  /** Записывает текущие координаты Cytoscape в модель (для сохранения в JSON). */
+  private persistNodePositionsFromCy(): void {
+    if (!this.cy) return;
+    this.nodes = this.nodes.map((n) => {
+      const el = this.cy!.getElementById(n.id);
+      if (el.empty()) return n;
+      const p = el.position();
+      return { ...n, x: p.x, y: p.y };
+    });
+  }
+
+  /**
+   * Основные узлы — колонка сверху вниз, связаны только между собой.
+   * Поддерево каждого раздела — компактный Dagre LR, затем сдвиг вплотную к main
+   * (без огромного boundingBox — иначе Dagre растягивает ранги на всю ширину).
+   */
+  private applyRoadmapLayout(): void {
+    if (!this.cy) return;
+    const cy = this.cy;
+    const MAIN_X = 64;
+    const MAIN_W = 118;
+    const MAIN_H = 32;
+    const ROW_GAP = 36;
+    const SUB_GAP = 40;
+
+    const mains = this.mainNodes;
+    let yCursor = 80;
+
+    this.layoutLog('start', {
+      mains: mains.map((x) => x.id),
+      mainCount: mains.length,
+    });
+
+    for (const m of mains) {
+      const mEl = cy.getElementById(m.id);
+      if (mEl.empty()) continue;
+
+      const rowTop = yCursor;
+      const mainCx = MAIN_X + MAIN_W / 2;
+      const mainCy = rowTop + MAIN_H / 2;
+      mEl.position({ x: mainCx, y: mainCy });
+
+      const sub = this.collectSubtreeLayoutForMain(cy, m.id);
+      if (sub.nonempty()) {
+        const memberSet = this.subtreeMemberIds(m.id);
+        const clusterSet = this.clusterIdsForSubtree(m.id);
+        this.layoutLog('subtree before dagre', {
+          mainId: m.id,
+          rowTop,
+          mainPos: { x: mainCx, y: mainCy },
+          nodeCount: memberSet.size,
+          clusterIds: [...clusterSet],
+          edgeCount: sub.edges().length,
+        });
+
+        sub.layout({
+          name: 'dagre',
+          rankDir: 'LR',
+          nodeSep: 22,
+          rankSep: 36,
+          edgeSep: 12,
+          ranker: 'network-simplex',
+          padding: 12,
+        } as never).run();
+
+        const layoutNodes = sub.filter('node');
+        const bbBefore = layoutNodes.boundingBox({ includeLabels: true });
+        const targetLeft = MAIN_X + MAIN_W + SUB_GAP;
+        const targetTop = rowTop;
+        const dx = targetLeft - bbBefore.x1;
+        const dy = targetTop - bbBefore.y1;
+
+        this.layoutLog('subtree after dagre (before translate)', {
+          mainId: m.id,
+          bbBefore: {
+            x1: bbBefore.x1,
+            y1: bbBefore.y1,
+            x2: bbBefore.x2,
+            y2: bbBefore.y2,
+            w: bbBefore.w,
+            h: bbBefore.h,
+          },
+          translate: { dx, dy },
+          targetLeft,
+          targetTop,
+        });
+
+        layoutNodes.forEach((n) => {
+          const p = n.position();
+          n.position({ x: p.x + dx, y: p.y + dy });
+        });
+
+        const bbAfter = layoutNodes.boundingBox({ includeLabels: true });
+        this.layoutLog('subtree after translate', {
+          mainId: m.id,
+          bbAfter: {
+            x1: bbAfter.x1,
+            y1: bbAfter.y1,
+            x2: bbAfter.x2,
+            y2: bbAfter.y2,
+            w: bbAfter.w,
+            h: bbAfter.h,
+          },
+        });
+
+        yCursor = Math.max(bbAfter.y2 + ROW_GAP, rowTop + MAIN_H + ROW_GAP);
+      } else {
+        yCursor = rowTop + MAIN_H + ROW_GAP;
+      }
+    }
   }
 
   private buildCyElements(): ElementDefinition[] {
@@ -209,13 +473,36 @@ export class RoadmapEditorComponent implements OnInit, OnChanges, AfterViewInit,
       return out;
     }
 
-    out.push({
-      data: { id: CY_VIRTUAL_ROOT, label: '' },
-      classes: 'cy-virtual',
-    });
+    const parentsNeedingCluster = this.nodes.filter((p) => this.directChildren(p.id).length > 0);
+    parentsNeedingCluster.sort((a, b) => this.nodeDepth(a.id) - this.nodeDepth(b.id));
+
+    for (const p of parentsNeedingCluster) {
+      let clusterCompoundParent: string | undefined;
+      if (p.parentId) {
+        const gp = this.nodes.find((x) => x.id === p.parentId);
+        if (gp && this.directChildren(gp.id).length > 0) {
+          clusterCompoundParent = this.clusterId(gp.id);
+        }
+      }
+      out.push({
+        data: {
+          id: this.clusterId(p.id),
+          label: '',
+          ...(clusterCompoundParent ? { parent: clusterCompoundParent } : {}),
+        },
+        classes: 'cy-cluster',
+      });
+    }
 
     for (const n of this.nodes) {
       const hex = this.getNodeColor(n);
+      let compoundParent: string | undefined;
+      if (n.parentId) {
+        const par = this.nodes.find((x) => x.id === n.parentId);
+        if (par && this.directChildren(par.id).length > 0) {
+          compoundParent = this.clusterId(par.id);
+        }
+      }
       out.push({
         data: {
           id: n.id,
@@ -223,29 +510,35 @@ export class RoadmapEditorComponent implements OnInit, OnChanges, AfterViewInit,
           colorHex: hex,
           textColor: this.getTileTextColor(hex),
           nodeType: n.type,
+          ...(compoundParent ? { parent: compoundParent } : {}),
         },
       });
     }
 
     const mains = this.mainNodes;
-    for (const m of mains) {
+    for (let i = 0; i < mains.length - 1; i++) {
       out.push({
         data: {
-          id: `e-${CY_VIRTUAL_ROOT}-${m.id}`,
-          source: CY_VIRTUAL_ROOT,
-          target: m.id,
+          id: `e-mainchain-${mains[i].id}-${mains[i + 1].id}`,
+          source: mains[i].id,
+          target: mains[i + 1].id,
         },
+        classes: 'cy-edge-main-chain',
       });
     }
 
-    for (const n of this.nodes) {
-      if (n.parentId) {
+    for (const p of this.nodes) {
+      const kids = this.directChildren(p.id);
+      if (kids.length === 0) continue;
+      const cid = this.clusterId(p.id);
+      out.push({
+        data: { id: `e-${p.id}-${cid}`, source: p.id, target: cid },
+        classes: 'cy-edge-to-cluster',
+      });
+      for (const c of kids) {
         out.push({
-          data: {
-            id: `e-${n.parentId}-${n.id}`,
-            source: n.parentId,
-            target: n.id,
-          },
+          data: { id: `e-${cid}-${c.id}`, source: cid, target: c.id },
+          classes: 'cy-edge-cluster-child',
         });
       }
     }
@@ -261,16 +554,10 @@ export class RoadmapEditorComponent implements OnInit, OnChanges, AfterViewInit,
       return;
     }
     this.cy.add(elems);
-    this.cy.layout({
-      name: 'dagre',
-      rankDir: 'LR',
-      nodeSep: 28,
-      rankSep: 64,
-      edgeSep: 12,
-      ranker: 'network-simplex',
-      padding: 24,
-    } as never).run();
-    this.cy.fit(undefined, 48);
+    this.applyRoadmapLayout();
+    this.restoreSavedRoadmapNodePositions();
+    this.persistNodePositionsFromCy();
+    this.cy.fit(undefined, 56);
     this.syncCySelection();
   }
 
@@ -294,6 +581,7 @@ export class RoadmapEditorComponent implements OnInit, OnChanges, AfterViewInit,
       label: this.tileLabel(n),
       colorHex: hex,
       textColor: this.getTileTextColor(hex),
+      lightTile: this.nodeLightTileFlag(n),
     });
   }
 
@@ -377,6 +665,13 @@ export class RoadmapEditorComponent implements OnInit, OnChanges, AfterViewInit,
     return this.getColorHex(colorType);
   }
 
+  /** Белая плитка: отдельные стиль и hover. */
+  private nodeLightTileFlag(node: RoadmapNode): 'yes' | 'no' {
+    const hex = this.getNodeColor(node).replace(/\s/g, '').toUpperCase();
+    if (node.colorType === 'white' || hex === '#FFFFFF') return 'yes';
+    return 'no';
+  }
+
   getTileTextColor(color: string): string {
     const rgb = this.hexToRgb(color);
     if (!rgb) return '#111111';
@@ -447,8 +742,22 @@ export class RoadmapEditorComponent implements OnInit, OnChanges, AfterViewInit,
 
   onSave(): void {
     this.error = null;
-    const payload: RoadmapData = { title: this.title, nodes: this.nodes };
+    const payload: RoadmapData = {
+      title: this.title,
+      nodes: this.nodesForPayload(),
+      defaultChildrenDisplay: 'single-path-block',
+    };
     this.save.emit(payload);
-    this.baseline = this.serialize();
+    // baseline обновляем только после успешного PUT на стороне родителя;
+    // иначе при ошибке сети кнопка уже «Сохранено», а файл на диске старый.
+  }
+
+  /** Закрытие с предупреждением, если есть несохранённые изменения. */
+  requestClose(): void {
+    if (this.isDirty) {
+      const ok = confirm('Есть несохранённые изменения. Закрыть без сохранения?');
+      if (!ok) return;
+    }
+    this.close.emit();
   }
 }

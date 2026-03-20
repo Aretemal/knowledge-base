@@ -306,10 +306,13 @@ export class AppComponent implements OnInit {
   async saveRoadmap(data: RoadmapData): Promise<void> {
     if (!this.editingRoadmapFile) return;
     this.roadmapSaving = true;
+    this.error = null;
     try {
       await this.api.putFileContent(this.editingRoadmapFile.id, data);
       await this.loadTree();
       this.closeRoadmapEditor();
+    } catch (e) {
+      this.error = e instanceof Error ? e.message : 'Не удалось сохранить роадмап';
     } finally {
       this.roadmapSaving = false;
     }

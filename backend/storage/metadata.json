@@ -31,7 +31,7 @@
       "size": 9,
       "mimeType": "text/plain",
       "originalName": "Новый текстовый документ.txt",
-      "storagePath": "C:\\Users\\admin\\Desktop\\projects\\kb-svelte-nest\\backend\\storage\\files\\f00871d5-822d-4511-bb47-8fdf23e9f96e.txt"
+      "storagePath": "f00871d5-822d-4511-bb47-8fdf23e9f96e.txt"
     },
     {
       "id": "d2db0d88-6b0d-4d0b-b009-4954ac72bb74",
@@ -41,7 +41,7 @@
       "size": 9,
       "mimeType": "text/plain",
       "originalName": "Новый текстовый документ.txt",
-      "storagePath": "C:\\Users\\admin\\Desktop\\projects\\kb-svelte-nest\\backend\\storage\\files\\722b73e4-21a2-40e7-8d4f-b56c3f9a3ff0.txt"
+      "storagePath": "722b73e4-21a2-40e7-8d4f-b56c3f9a3ff0.txt"
     },
     {
       "id": "4e299b54-cabf-4b2a-95a3-8dc7975b8a88",
@@ -51,7 +51,7 @@
       "size": 46,
       "mimeType": "application/json",
       "originalName": "Роадмап.roadmap",
-      "storagePath": "C:\\Users\\admin\\Desktop\\projects\\kb-svelte-nest\\backend\\storage\\files\\1d7475a7-c3be-4560-a25e-b04db207b901.roadmap"
+      "storagePath": "1d7475a7-c3be-4560-a25e-b04db207b901.roadmap"
     },
     {
       "id": "79b21527-6429-4607-b66c-facac23ef640",
@@ -61,7 +61,7 @@
       "size": 46,
       "mimeType": "application/json",
       "originalName": "Роадмап.roadmap",
-      "storagePath": "C:\\Users\\admin\\Desktop\\projects\\kb-svelte-nest\\backend\\storage\\files\\283eace7-8814-41b9-ac0d-c7cc9507834f.roadmap"
+      "storagePath": "283eace7-8814-41b9-ac0d-c7cc9507834f.roadmap"
     },
     {
       "id": "52970dda-3d7e-4f77-97fe-686a1d72bb78",
@@ -71,7 +71,7 @@
       "size": 46,
       "mimeType": "application/json",
       "originalName": "Роадмап.roadmap",
-      "storagePath": "C:\\Users\\admin\\Desktop\\projects\\kb-svelte-nest\\backend\\storage\\files\\0f2b4436-3593-486c-a161-6f58e8ee30eb.roadmap"
+      "storagePath": "0f2b4436-3593-486c-a161-6f58e8ee30eb.roadmap"
     }
   ]
 }

@@ -5,7 +5,7 @@
       <button type="button" class="btn btn-primary" (click)="onSave()" [disabled]="saving || !isDirty">
         {{ saving ? 'Сохранение…' : isDirty ? 'Сохранить' : 'Сохранено' }}
       </button>
-      <button type="button" class="btn btn-secondary" (click)="close.emit()">Закрыть</button>
+      <button type="button" class="btn btn-secondary" (click)="requestClose()">Закрыть</button>
     </div>
   </header>
   @if (error) {
@@ -21,6 +21,9 @@
           placeholder="Название роадмапа"
         />
         <button type="button" class="btn btn-small" (click)="createEmptyNode('main', null)">+ Раздел</button>
+        <span class="graph-edit-pos-hint" title="После «Сохранить» позиции попадут в .roadmap">
+          Узлы можно перетаскивать; линии — только по осям X и Y. Потомки всегда группируются блоком.
+        </span>
       </div>
 
       <div class="graph-stage">
@@ -73,17 +76,22 @@
               ></textarea>
             </div>
 
-            <div class="graph-drawer-field">
-              <label class="graph-drawer-label">Цвет узла</label>
-              <select
-                class="graph-drawer-input"
-                [ngModel]="selectedColorType"
-                (ngModelChange)="updateSelectedColorType($event)"
-              >
-                @for (option of colorOptions; track option.value) {
-                  <option [value]="option.value">{{ option.label }}</option>
-                }
-              </select>
+            <div class="graph-drawer-settings">
+              <h3 class="graph-drawer-section-title">Настройки</h3>
+
+              <div class="graph-drawer-field">
+                <label class="graph-drawer-label">Цвет узла</label>
+                <select
+                  class="graph-drawer-input"
+                  [ngModel]="selectedColorType"
+                  (ngModelChange)="updateSelectedColorType($event)"
+                >
+                  @for (option of colorOptions; track option.value) {
+                    <option [value]="option.value">{{ option.label }}</option>
+                  }
+                </select>
+              </div>
+
             </div>
 
             <div class="graph-drawer-id">id: {{ selectedNode.id }}</div>
@@ -98,7 +106,7 @@
             </div>
 
             <div class="graph-drawer-hint">
-              Нажми «Сохранить» сверху, чтобы применить изменения.
+              Нажми «Сохранить» сверху, чтобы записать изменения и положение узлов на схеме.
             </div>
           </div>
         }

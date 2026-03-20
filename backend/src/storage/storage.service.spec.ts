@@ -132,6 +132,7 @@ describe('StorageService', () => {
 
       const found = await service.getFileById(file.id);
       expect(found).toEqual(file);
+      expect(file.storagePath).toBe('test.txt');
     });
 
     it('getFilesByFolder returns only files in folder', async () => {
@@ -184,7 +185,7 @@ describe('StorageService', () => {
       expect(await service.getFileById(file.id)).toBeUndefined();
     });
 
-    it('getPhysicalPath returns storagePath', async () => {
+    it('getPhysicalPath joins filesDir with basename from metadata', async () => {
       const filePath = path.join(testDir, 'files', 'p.txt');
       await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
       await fs.promises.writeFile(filePath, 'x', 'utf8');
@@ -196,6 +197,7 @@ describe('StorageService', () => {
         originalName: 'p.txt',
         storagePath: filePath,
       });
+      expect(file.storagePath).toBe('p.txt');
       expect(service.getPhysicalPath(file)).toBe(filePath);
     });
   });

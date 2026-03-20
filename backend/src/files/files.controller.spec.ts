@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import * as fs from 'node:fs';
 import { FilesController } from './files.controller';
 import { StorageService } from '../storage/storage.service';
 import type { FileEntity } from '../storage/metadata.types';
@@ -16,7 +17,7 @@ describe('FilesController', () => {
     mimeType: 'text/plain',
     createdAt: '2025-01-01T00:00:00.000Z',
     originalName: 'doc.txt',
-    storagePath: '/storage/files/abc.txt',
+    storagePath: 'abc.txt',
   };
 
   beforeEach(async () => {
@@ -83,7 +84,7 @@ describe('FilesController', () => {
           size: 10,
           mimeType: 'text/plain',
           originalName: 'upload.txt',
-          storagePath: '/tmp/upload.txt',
+          storagePath: 'upload.txt',
         }),
       );
     });
@@ -133,14 +134,19 @@ describe('FilesController', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('calls res.download when file exists', async () => {
+    it('calls res.download when file exists on disk', async () => {
+      const accessSpy = jest.spyOn(fs.promises, 'access').mockResolvedValue(undefined);
       const res = {
         download: jest.fn(),
       };
-      await controller.download('file-id', res as any);
-      expect(storage.getFileById).toHaveBeenCalledWith('file-id');
-      expect(storage.getPhysicalPath).toHaveBeenCalledWith(mockFile);
-      expect(res.download).toHaveBeenCalledWith(mockFile.storagePath, mockFile.name);
+      try {
+        await controller.download('file-id', res as any);
+        expect(storage.getFileById).toHaveBeenCalledWith('file-id');
+        expect(storage.getPhysicalPath).toHaveBeenCalledWith(mockFile);
+        expect(res.download).toHaveBeenCalledWith(mockFile.storagePath, mockFile.name);
+      } finally {
+        accessSpy.mockRestore();
+      }
     });
   });
 

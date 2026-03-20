@@ -1,4 +1,33 @@
 {
   "title": "Роадмап",
-  "nodes": []
+  "nodes": [
+    {
+      "id": "n-k4i8j0t6",
+      "label": "",
+      "type": "main",
+      "order": 0,
+      "colorType": "yellow",
+      "x": 152,
+      "y": 102
+    },
+    {
+      "id": "n-8ovnlbhj",
+      "label": "",
+      "type": "main",
+      "order": 1,
+      "colorType": "yellow",
+      "x": -200.5277142130909,
+      "y": 161.49838825143726
+    },
+    {
+      "id": "n-y2n99m69",
+      "label": "",
+      "type": "main",
+      "order": 2,
+      "colorType": "yellow",
+      "x": 152,
+      "y": 262
+    }
+  ],
+  "defaultChildrenDisplay": "separate-paths"
 }

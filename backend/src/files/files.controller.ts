@@ -34,6 +34,7 @@ interface UploadedFileShape {
 
 type NodeKind = 'main' | 'branch';
 type NodeColorType = 'blue' | 'red' | 'yellow' | 'white' | 'orange' | 'green';
+type ChildrenDisplayStyle = 'separate-paths' | 'single-path-block';
 
 interface RoadmapNodeShape {
   id: string;
@@ -43,11 +44,15 @@ interface RoadmapNodeShape {
   parentId?: string;
   content?: string;
   colorType?: NodeColorType;
+  childrenDisplay?: ChildrenDisplayStyle;
+  x?: number;
+  y?: number;
 }
 
 interface RoadmapDataShape {
   title: string;
   nodes: RoadmapNodeShape[];
+  defaultChildrenDisplay?: ChildrenDisplayStyle;
 }
 
 /** Исправляет имя файла: браузер может отправить UTF-8 как latin1 */
@@ -84,31 +89,45 @@ function isColorType(value: unknown): value is NodeColorType {
   );
 }
 
+function isChildrenDisplay(value: unknown): value is ChildrenDisplayStyle {
+  return value === 'separate-paths' || value === 'single-path-block';
+}
+
 function normalizeRoadmapData(input: unknown): RoadmapDataShape {
   const raw = (input ?? {}) as Record<string, unknown>;
   const nodesRaw = Array.isArray(raw['nodes']) ? raw['nodes'] : [];
 
   const nodes: RoadmapNodeShape[] = nodesRaw
     .map((item) => (item ?? {}) as Record<string, unknown>)
-    .filter((n) => typeof n['id'] === 'string' && typeof n['label'] === 'string')
+    .filter((n) => typeof n['id'] === 'string')
     .map((n) => {
       const normalizedType: NodeKind = n['type'] === 'main' ? 'main' : 'branch';
       const explicitColorType = isColorType(n['colorType']) ? n['colorType'] : undefined;
       const migratedColorType = explicitColorType ?? mapLegacyColorToType(n['color']);
+      const label =
+        typeof n['label'] === 'string' ? n['label'] : n['label'] != null ? String(n['label']) : '';
       return {
         id: n['id'] as string,
-        label: n['label'] as string,
+        label,
         type: normalizedType,
         ...(typeof n['order'] === 'number' ? { order: n['order'] } : {}),
         ...(typeof n['parentId'] === 'string' ? { parentId: n['parentId'] } : {}),
         ...(typeof n['content'] === 'string' ? { content: n['content'] } : {}),
         ...(migratedColorType ? { colorType: migratedColorType } : {}),
+        ...(isChildrenDisplay(n['childrenDisplay'])
+          ? { childrenDisplay: n['childrenDisplay'] }
+          : {}),
+        ...(typeof n['x'] === 'number' && Number.isFinite(n['x']) ? { x: n['x'] } : {}),
+        ...(typeof n['y'] === 'number' && Number.isFinite(n['y']) ? { y: n['y'] } : {}),
       };
     });
 
   return {
     title: typeof raw['title'] === 'string' ? raw['title'] : 'Роадмап',
     nodes,
+    ...(isChildrenDisplay(raw['defaultChildrenDisplay'])
+      ? { defaultChildrenDisplay: raw['defaultChildrenDisplay'] }
+      : {}),
   };
 }
 
@@ -154,7 +173,7 @@ export class FilesController {
       size: file.size,
       mimeType: file.mimetype,
       originalName: name,
-      storagePath: file.path,
+      storagePath: path.basename(file.path),
     });
   }
 
@@ -184,7 +203,13 @@ export class FilesController {
     if (!file) {
       throw new NotFoundException('File not found');
     }
-    res.download(this.storage.getPhysicalPath(file), file.name);
+    const abs = this.storage.getPhysicalPath(file);
+    try {
+      await fs.promises.access(abs, fs.constants.F_OK);
+    } catch {
+      throw new NotFoundException('File not found on disk');
+    }
+    res.download(abs, file.name);
   }
 
   @Get(':id/content')
@@ -237,6 +262,7 @@ export class FilesController {
       throw new BadRequestException('Invalid roadmap JSON');
     }
     const normalized = normalizeRoadmapData(parsed);
+    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
     await fs.promises.writeFile(
       filePath,
       JSON.stringify(normalized, null, 2),
